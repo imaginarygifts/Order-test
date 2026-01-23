@@ -1,0 +1,55 @@
+.orders-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.order-card {
+  background: #111;
+  border: 1px solid #222;
+  border-radius: 12px;
+  padding: 14px;
+  color: #fff;
+}
+
+.order-head {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 600;
+}
+
+.order-status {
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  background: #333;
+}
+
+.order-body {
+  margin-top: 8px;
+  font-size: 14px;
+}
+
+.order-body div {
+  margin-top: 4px;
+}
+
+.order-actions {
+  margin-top: 10px;
+  display: flex;
+  gap: 6px;
+}
+
+.order-actions select {
+  flex: 1;
+  padding: 6px;
+  border-radius: 8px;
+}
+
+.order-actions button {
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: none;
+  background: linear-gradient(135deg,#00ff9c,#00c3ff);
+  font-weight: 600;
+}
