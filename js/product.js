@@ -255,43 +255,58 @@ function recalcPrice() {
 }
 
 // ===== WHATSAPP ORDER =====
+
 window.orderNow = async function () {
   try {
-    // ===== GET & INCREMENT ORDER COUNTER =====
+    // ================================
+    // 1️⃣ ENSURE PRODUCT ID EXISTS
+    // ================================
+    const productId = product?.id || new URLSearchParams(location.search).get("id");
+
+    if (!productId) {
+      alert("Product ID missing");
+      return;
+    }
+
+    // ================================
+    // 2️⃣ GET / CREATE ORDER COUNTER
+    // ================================
     const counterRef = doc(db, "counters", "orders");
     const counterSnap = await getDoc(counterRef);
 
     let nextNumber = 1001;
 
     if (counterSnap.exists()) {
-  nextNumber = (counterSnap.data().current || 1000) + 1;
+      nextNumber = (counterSnap.data().current || 1000) + 1;
+      await updateDoc(counterRef, { current: nextNumber });
+    } else {
+      // 🔥 FIRST TIME CREATE
+      await setDoc(counterRef, { current: nextNumber });
+    }
 
-  await updateDoc(counterRef, { current: nextNumber });
-} else {
-  nextNumber = 1001;
-
-  await setDoc(counterRef, { current: nextNumber });
-}
     const orderNumber = `IG-${nextNumber}`;
 
-    // ===== BUILD ORDER DATA =====
+    // ================================
+    // 3️⃣ BUILD SAFE ORDER DATA
+    // ================================
     const orderData = {
       orderNumber,
-      productId: product.id,
-      productName: product.name,
+
+      productId,
+      productName: product?.name || "",
 
       variants: {
-        color: selected.color || null,
-        size: selected.size || null
+        color: selected?.color || null,
+        size: selected?.size || null
       },
 
-      customOptions: Object.keys(selected.options || {}).map(i => ({
-        label: product.customOptions[i].label,
-        value: selected.optionValues[i] || "Selected",
+      customOptions: Object.keys(selected?.options || {}).map(i => ({
+        label: product.customOptions?.[i]?.label || "",
+        value: selected.optionValues?.[i] || "Selected",
         image: selected.imageLinks?.[i] || null
       })),
 
-      price: finalPrice,
+      price: Number(finalPrice) || 0,
 
       orderType: "whatsapp",
       paymentMode: "whatsapp",
@@ -302,34 +317,45 @@ window.orderNow = async function () {
       createdAt: Date.now()
     };
 
-    // ===== SAVE ORDER =====
+    // ================================
+    // 4️⃣ SAVE ORDER TO FIRESTORE
+    // ================================
     await addDoc(collection(db, "orders"), orderData);
 
-    // ===== WHATSAPP MESSAGE =====
+    // ================================
+    // 5️⃣ BUILD WHATSAPP MESSAGE
+    // ================================
     let msg = `🛍 *New Order — Imaginary Gifts*\n\n`;
 
-    msg += `🧾 Order No: *${orderNumber}*\n\n`;
-    msg += `Product: ${product.name}\n`;
+    msg += `🧾 *Order No:* ${orderNumber}\n\n`;
+    msg += `📦 *Product:* ${orderData.productName}\n`;
 
-    if (selected.color) msg += `Color: ${selected.color.name}\n`;
-    if (selected.size) msg += `Size: ${selected.size.name}\n`;
+    if (orderData.variants.color)
+      msg += `🎨 Color: ${orderData.variants.color.name}\n`;
+
+    if (orderData.variants.size)
+      msg += `📏 Size: ${orderData.variants.size.name}\n`;
 
     if (orderData.customOptions.length) {
-      msg += `Options:\n`;
+      msg += `\n⚙ Options:\n`;
       orderData.customOptions.forEach(o => {
         msg += `- ${o.label}: ${o.value}\n`;
         if (o.image) msg += `  Image: ${o.image}\n`;
       });
     }
 
-    msg += `\nTotal: ₹${finalPrice}\n`;
-    msg += `Order Status: Pending\n\n`;
-    msg += `Product Link:\n${window.location.href}`;
+    msg += `\n💰 *Total:* ₹${orderData.price}\n`;
+    msg += `📌 Status: Pending\n\n`;
+    msg += `🔗 Product Link:\n${orderData.productLink}`;
 
+    // ================================
+    // 6️⃣ OPEN WHATSAPP
+    // ================================
     const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`;
     window.open(url, "_blank");
 
   } catch (err) {
+    console.error(err);
     alert("Order failed: " + err.message);
   }
 };
