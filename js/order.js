@@ -2,15 +2,11 @@ import { db } from "./firebase.js";
 import {
   collection,
   addDoc,
-  serverTimestamp
+  doc,
+  getDoc,
+  setDoc,
+  updateDoc
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-
-// ===== order data =====
-let orderData = null;
-let subTotal = 0;
-let discount = 0;
-let finalAmount = 0;
-let selectedPaymentMode = "online";
 
 // ===== GLOBAL STATE =====
 let orderData = null;
@@ -20,132 +16,86 @@ let finalAmount = 0;
 let appliedCoupon = null;
 let selectedPaymentMode = "online";
 let availableCoupons = [];
+let orderNumber = null;
 
-// ===== order data =====
-function loadOrder() {
-  const raw = localStorage.getItem("checkoutData");
-  if (!raw) {
-    alert("No order found");
-    location.href = "index.html";
-    return;
+// ===== order number =====
+
+async function generateOrderNumber() {
+  const ref = doc(db, "counters", "orders");
+  const snap = await getDoc(ref);
+
+  let next = 1001;
+
+  if (snap.exists()) {
+    next = (snap.data().current || 1000) + 1;
+    await updateDoc(ref, { current: next });
+  } else {
+    await setDoc(ref, { current: next });
   }
 
-  orderData = JSON.parse(raw);
-  subTotal = orderData.finalPrice;
+  return `IG-${next}`;
 }
-
-loadOrder();
 
 // ===== save order =====
 
-async function saveOrderToFirestore(paymentInfo = {}) {
-  const customer = {
-    name: custName.value,
-    phone: custPhone.value,
-    address: custAddress.value,
-    pincode: custPincode.value
-  };
+async function saveOrder(paymentMode, paymentStatus, paymentId = null) {
+  const customer = validateForm();
+  if (!customer) return null;
+
+  if (!orderData) {
+    alert("Order data missing");
+    return null;
+  }
+
+  orderNumber = await generateOrderNumber();
 
   const order = {
-    orderNumber: "SF-" + Date.now(),
-    source: "website",
-    createdBy: "customer",
-    createdAt: serverTimestamp(),
-    status: "pending",
+    orderNumber,
 
-    customer,
+    productId: orderData.product.id || null,
+    productName: orderData.product.name,
 
-    product: {
-      productId: orderData.product.id,
-      name: orderData.product.name,
-      image: orderData.product.images?.[0] || ""
-    },
+    categoryId: orderData.product.categoryId || null,
 
     variants: {
       color: orderData.color || null,
       size: orderData.size || null
     },
 
-    customOptions: Object.keys(orderData.optionValues || {}).map(i => ({
-      label: orderData.product.customOptions[i].label,
-      value: orderData.optionValues[i]
+    customOptions: Object.keys(orderData.options || {}).map(i => ({
+      label: orderData.product.customOptions[i]?.label,
+      value: orderData.optionValues?.[i] || "Selected",
+      image: orderData.imageLinks?.[i] || null
     })),
 
     pricing: {
-      subtotal: subTotal,
+      subTotal,
       discount,
-      total: finalAmount
+      finalAmount
+    },
+
+    customer: {
+      name: customer.name,
+      phone: customer.phone,
+      address: customer.address,
+      pincode: customer.pincode
     },
 
     payment: {
-      method: selectedPaymentMode,
-      status: paymentInfo.status || "pending",
-      paymentId: paymentInfo.paymentId || null
+      mode: paymentMode,
+      status: paymentStatus,
+      paymentId
     },
 
-    timeline: {
-      pending: serverTimestamp()
-    }
+    orderStatus: "pending",
+    source: "frontend",
+
+    createdAt: Date.now()
   };
 
   await addDoc(collection(db, "orders"), order);
+  return order;
 }
-
-//===== start payment =====
-
-function startPayment(customer) {
-  const options = {
-    key: "rzp_live_pfVyI37GhqWTGK",
-    amount: finalAmount * 100,
-    currency: "INR",
-    name: "Imaginary Gifts",
-    description: "Order Payment",
-
-    handler: async function (response) {
-      await saveOrderToFirestore({
-        status: "paid",
-        paymentId: response.razorpay_payment_id
-      });
-
-      alert("Payment Successful!");
-    },
-
-    prefill: {
-      name: customer.name,
-      contact: customer.phone
-    }
-  };
-
-  const rzp = new Razorpay(options);
-  rzp.open();
-}
-
-// ===== place order ====
-async function placeCODOrder() {
-  await saveOrderToFirestore({
-    status: "pending"
-  });
-
-  alert("Order placed successfully!");
-}
-
-window.placeOrder = function () {
-  if (!custName.value || !custPhone.value || !custAddress.value) {
-    alert("Fill all details");
-    return;
-  }
-
-  if (selectedPaymentMode === "cod") {
-    placeCODOrder();
-  } else {
-    startPayment({
-      name: custName.value,
-      phone: custPhone.value
-    });
-  }
-};
-
-
 
 // ===== LOAD ORDER DATA =====
 function loadOrder() {
@@ -368,21 +318,33 @@ function validateForm() {
 }
 
 // ===== PLACE ORDER =====
-window.placeOrder = function () {
-  const customer = validateForm();
-  if (!customer) return;
 
-  if (selectedPaymentMode === "cod") {
-    sendWhatsApp("COD");
-  } else {
-    startPayment(customer);
+window.placeOrder = async function () {
+  try {
+    const customer = validateForm();
+    if (!customer) return;
+
+    if (selectedPaymentMode === "cod") {
+      const order = await saveOrder("COD", "pending");
+      if (!order) return;
+
+      sendWhatsApp("COD", order.orderNumber);
+      alert("Order placed successfully!");
+    } 
+    else {
+      startPayment(customer);
+    }
+
+  } catch (err) {
+    alert("Order failed: " + err.message);
   }
 };
 
 // ===== WHATSAPP =====
-function sendWhatsApp(mode, paymentId = null) {
-  let msg = `🛍 New Order — Imaginary Gifts\n\n`;
+function sendWhatsApp(mode, orderNo, paymentId = null) {
+  let msg = `🛍 *New Order — Imaginary Gifts*\n\n`;
 
+  msg += `🧾 Order No: *${orderNo}*\n\n`;
   msg += `Name: ${custName.value}\n`;
   msg += `Phone: ${custPhone.value}\n`;
   msg += `Address: ${custAddress.value}\n`;
@@ -393,19 +355,15 @@ function sendWhatsApp(mode, paymentId = null) {
   if (orderData.color) msg += `Color: ${orderData.color.name}\n`;
   if (orderData.size) msg += `Size: ${orderData.size.name}\n`;
 
-  if (orderData.options && Object.keys(orderData.options).length) {
+  if (orderData.options) {
     msg += `Options:\n`;
     Object.keys(orderData.options).forEach(i => {
-      const label = orderData.product.customOptions[i].label;
-      const value = orderData.optionValues[i] || "Selected";
-      msg += `- ${label}: ${value}\n`;
+      msg += `- ${orderData.product.customOptions[i].label}: ${orderData.optionValues[i]}\n`;
     });
   }
 
-  msg += `\nSubtotal: ₹${subTotal}\n`;
-  msg += `Discount: ₹${discount}\n`;
-  msg += `Total: ₹${finalAmount}\n`;
-  msg += `Payment Mode: ${mode}\n`;
+  msg += `\nTotal: ₹${finalAmount}\n`;
+  msg += `Payment: ${mode}\n`;
 
   if (paymentId) msg += `Payment ID: ${paymentId}\n`;
 
@@ -421,16 +379,26 @@ function startPayment(customer) {
     currency: "INR",
     name: "Imaginary Gifts",
     description: "Order Payment",
-    handler: function (response) {
-      sendWhatsApp("Online", response.razorpay_payment_id);
+
+    handler: async function (response) {
+      const order = await saveOrder(
+        "ONLINE",
+        "paid",
+        response.razorpay_payment_id
+      );
+
+      if (order) {
+        sendWhatsApp("ONLINE", order.orderNumber, response.razorpay_payment_id);
+        alert("Payment successful!");
+      }
     },
+
     prefill: {
       name: customer.name,
       contact: customer.phone
     },
-    theme: {
-      color: "#00f5ff"
-    }
+
+    theme: { color: "#00f5ff" }
   };
 
   const rzp = new Razorpay(options);
