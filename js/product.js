@@ -1,5 +1,5 @@
 import { db, storage } from './firebase.js';
-import { doc, getDoc, getDocs, collection } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { doc, getDoc, getDocs, collection, updateDoc, addDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
 
 // ===== CONFIG =====
@@ -255,32 +255,84 @@ function recalcPrice() {
 }
 
 // ===== WHATSAPP ORDER =====
-window.orderNow = function() {
-  let msg = `🛍 New Order — Imaginary Gifts\n\n`;
+window.orderNow = async function () {
+  try {
+    // ===== GET & INCREMENT ORDER COUNTER =====
+    const counterRef = doc(db, "counters", "orders");
+    const counterSnap = await getDoc(counterRef);
 
-  msg += `Product: ${product.name}\n`;
-  if (selected.color) msg += `Color: ${selected.color.name}\n`;
-  if (selected.size) msg += `Size: ${selected.size.name}\n`;
+    let nextNumber = 1001;
 
-if (Object.keys(selected.options).length) {
-  msg += `Options:\n`;
-  Object.keys(selected.options).forEach(i => {
-    const label = product.customOptions[i].label;
-    const value = selected.optionValues[i] || "Selected";
-
-    msg += `- ${label}: ${value}\n`;
-
-    if (selected.imageLinks[i]) {
-      msg += `  Image: ${selected.imageLinks[i]}\n`;
+    if (counterSnap.exists()) {
+      nextNumber = (counterSnap.data().current || 1000) + 1;
     }
-  });
-}
-  msg += `\nTotal: ₹${finalPrice}\n\n`;
-  msg += `Product Link:\n${window.location.href}`;
 
-  const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`;
-  window.open(url, "_blank");
+    await updateDoc(counterRef, { current: nextNumber });
+
+    const orderNumber = `IG-${nextNumber}`;
+
+    // ===== BUILD ORDER DATA =====
+    const orderData = {
+      orderNumber,
+      productId: product.id,
+      productName: product.name,
+
+      variants: {
+        color: selected.color || null,
+        size: selected.size || null
+      },
+
+      customOptions: Object.keys(selected.options || {}).map(i => ({
+        label: product.customOptions[i].label,
+        value: selected.optionValues[i] || "Selected",
+        image: selected.imageLinks?.[i] || null
+      })),
+
+      price: finalPrice,
+
+      orderType: "whatsapp",
+      paymentMode: "whatsapp",
+      paymentStatus: "pending",
+      orderStatus: "pending",
+
+      productLink: window.location.href,
+      createdAt: Date.now()
+    };
+
+    // ===== SAVE ORDER =====
+    await addDoc(collection(db, "orders"), orderData);
+
+    // ===== WHATSAPP MESSAGE =====
+    let msg = `🛍 *New Order — Imaginary Gifts*\n\n`;
+
+    msg += `🧾 Order No: *${orderNumber}*\n\n`;
+    msg += `Product: ${product.name}\n`;
+
+    if (selected.color) msg += `Color: ${selected.color.name}\n`;
+    if (selected.size) msg += `Size: ${selected.size.name}\n`;
+
+    if (orderData.customOptions.length) {
+      msg += `Options:\n`;
+      orderData.customOptions.forEach(o => {
+        msg += `- ${o.label}: ${o.value}\n`;
+        if (o.image) msg += `  Image: ${o.image}\n`;
+      });
+    }
+
+    msg += `\nTotal: ₹${finalPrice}\n`;
+    msg += `Order Status: Pending\n\n`;
+    msg += `Product Link:\n${window.location.href}`;
+
+    const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`;
+    window.open(url, "_blank");
+
+  } catch (err) {
+    alert("Order failed: " + err.message);
+  }
 };
+
+//===== buy now =====
+
 window.buyNow = function () {
   const data = {
     product,
