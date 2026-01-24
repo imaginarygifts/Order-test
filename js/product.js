@@ -264,11 +264,14 @@ window.orderNow = async function () {
     let nextNumber = 1001;
 
     if (counterSnap.exists()) {
-      nextNumber = (counterSnap.data().current || 1000) + 1;
-    }
+  nextNumber = (counterSnap.data().current || 1000) + 1;
 
-    await updateDoc(counterRef, { current: nextNumber });
+  await updateDoc(counterRef, { current: nextNumber });
+} else {
+  nextNumber = 1001;
 
+  await setDoc(counterRef, { current: nextNumber });
+}
     const orderNumber = `IG-${nextNumber}`;
 
     // ===== BUILD ORDER DATA =====
