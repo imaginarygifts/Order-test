@@ -310,7 +310,7 @@ window.orderNow = async function () {
       price: Number(finalPrice) || 0,
 
       orderType: "whatsapp",
-      payment?.mode: "whatsapp",
+      paymentMode: "whatsapp",
       paymentStatus: "pending",
       orderStatus: "pending",
 
