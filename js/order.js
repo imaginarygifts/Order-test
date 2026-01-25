@@ -54,6 +54,7 @@ async function saveOrder(paymentMode, paymentStatus, paymentId = null) {
 
     productId: orderData.product.id || null,
     productName: orderData.product.name,
+productImage: product.images?.[0] || "",
 
     categoryId: orderData.product.categoryId || null,
 
