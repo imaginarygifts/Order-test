@@ -294,6 +294,7 @@ window.orderNow = async function () {
 
       productId,
       productName: product?.name || "",
+      productImage: product.images?.[0] || "",
 
       variants: {
         color: selected?.color || null,
