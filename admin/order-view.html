@@ -1,0 +1,65 @@
+<body class="dark">
+
+<div class="page-header">
+  <button class="back-btn" onclick="history.back()">←</button>
+  <div>
+    <h2 id="orderNumber">Order</h2>
+    <div class="muted" id="orderDate"></div>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- STATUS -->
+  <div class="card">
+    <h3>Order Status</h3>
+    <select id="statusSelect">
+      <option value="pending">Pending</option>
+      <option value="ready">Ready</option>
+      <option value="shipped">Shipped</option>
+      <option value="in-transit">In Transit</option>
+      <option value="delivered">Delivered</option>
+      <option value="cancelled">Cancelled</option>
+      <option value="returned">Returned</option>
+    </select>
+    <button onclick="updateStatus()">Update Status</button>
+  </div>
+
+  <!-- PRODUCT -->
+  <div class="card">
+    <h3>Product</h3>
+    <img id="productImage" class="product-img">
+    <p id="productName"></p>
+    <div id="variants"></div>
+    <div id="customOptions"></div>
+  </div>
+
+  <!-- PRICING -->
+  <div class="card">
+    <h3>Pricing</h3>
+    <div>Subtotal: ₹<span id="subTotal"></span></div>
+    <div>Discount: ₹<span id="discount"></span></div>
+    <div><b>Total: ₹<span id="finalAmount"></span></b></div>
+  </div>
+
+  <!-- CUSTOMER -->
+  <div class="card">
+    <h3>Customer</h3>
+    <p id="custName"></p>
+    <p id="custPhone"></p>
+    <p id="custAddress"></p>
+    <button id="waBtn">WhatsApp</button>
+  </div>
+
+  <!-- PAYMENT -->
+  <div class="card">
+    <h3>Payment</h3>
+    <div>Mode: <span id="paymentMode"></span></div>
+    <div>Status: <span id="paymentStatus"></span></div>
+    <div>ID: <span id="paymentId"></span></div>
+  </div>
+
+</div>
+
+<script type="module" src="order-view.js"></script>
+</body>
