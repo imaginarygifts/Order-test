@@ -282,7 +282,7 @@ function sendWhatsApp(mode, paymentId = null) {
 // ===== RAZORPAY =====
 function startPayment(customer) {
   const options = {
-    key: "rzp_live_pfVyI37GhqWTGK",
+    key: "rzp_test_8OmRCO9SiPeXWg",
     amount: finalAmount * 100,
     currency: "INR",
     name: "Imaginary Gifts",
