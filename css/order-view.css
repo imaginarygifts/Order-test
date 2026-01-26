@@ -1,0 +1,123 @@
+
+
+body.dark {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+  background: #0b0d12;
+  color: #fff;
+}
+
+/* HEADER */
+.header {
+  display: flex;
+  gap: 12px;
+  padding: 16px;
+  align-items: center;
+}
+
+.back-btn {
+  background: none;
+  border: 1px solid #333;
+  color: #fff;
+  font-size: 18px;
+  border-radius: 8px;
+  padding: 6px 10px;
+}
+
+.muted {
+  opacity: .6;
+  font-size: 13px;
+}
+
+/* LAYOUT */
+.container {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.card {
+  background: #12151f;
+  border-radius: 16px;
+  padding: 14px;
+  border: 1px solid #1f2430;
+}
+
+h3 {
+  margin: 0 0 10px;
+  font-size: 16px;
+}
+
+/* STATUS */
+.row {
+  display: flex;
+  gap: 10px;
+}
+
+select {
+  flex: 1;
+  background: #0f121a;
+  color: #fff;
+  border: 1px solid #2a2f3a;
+  border-radius: 10px;
+  padding: 10px;
+}
+
+.primary-btn {
+  background: linear-gradient(135deg,#00ff9c,#00c3ff);
+  border: none;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-weight: 600;
+}
+
+/* PRODUCT */
+.product-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.product-img {
+  width: 64px;
+  height: 64px;
+  border-radius: 12px;
+  object-fit: cover;
+  background: #222;
+}
+
+.options div {
+  font-size: 13px;
+  margin-top: 6px;
+}
+
+/* PRICING */
+.price-row {
+  display: flex;
+  justify-content: space-between;
+  margin: 6px 0;
+}
+
+.price-row.total {
+  font-weight: bold;
+  font-size: 16px;
+}
+
+/* CUSTOMER */
+.wa-btn {
+  margin-top: 10px;
+  background: #25D366;
+  border: none;
+  color: #000;
+  padding: 10px;
+  border-radius: 12px;
+  font-weight: 600;
+  width: 100%;
+}
+
+/* PAYMENT */
+.info-row {
+  font-size: 14px;
+  margin: 6px 0;
+}
