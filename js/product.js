@@ -261,7 +261,9 @@ window.orderNow = async function () {
     // ================================
     // 1️⃣ ENSURE PRODUCT ID EXISTS
     // ================================
-    const productId = product?.id || new URLSearchParams(location.search).get("id");
+    const productId =
+      product?.id ||
+      new URLSearchParams(location.search).get("id");
 
     if (!productId) {
       alert("Product ID missing");
@@ -280,21 +282,22 @@ window.orderNow = async function () {
       nextNumber = (counterSnap.data().current || 1000) + 1;
       await updateDoc(counterRef, { current: nextNumber });
     } else {
-      // 🔥 FIRST TIME CREATE
       await setDoc(counterRef, { current: nextNumber });
     }
 
     const orderNumber = `IG-${nextNumber}`;
 
     // ================================
-    // 3️⃣ BUILD SAFE ORDER DATA
+    // 3️⃣ BUILD ORDER DATA (✅ FIXED SCHEMA)
     // ================================
     const orderData = {
       orderNumber,
 
       productId,
       productName: product?.name || "",
-      productImage: product.images?.[0] || "",
+      productImage: product?.images?.[0] || "",
+      categoryId: product?.categoryId || null,
+      tags: product?.tags || [],
 
       variants: {
         color: selected?.color || null,
@@ -302,24 +305,31 @@ window.orderNow = async function () {
       },
 
       customOptions: Object.keys(selected?.options || {}).map(i => ({
-        label: product.customOptions?.[i]?.label || "",
-        value: selected.optionValues?.[i] || "Selected",
-        image: selected.imageLinks?.[i] || null
+        label: product?.customOptions?.[i]?.label || "",
+        value: selected?.optionValues?.[i] || "Selected",
+        image: selected?.imageLinks?.[i] || null
       })),
 
-      price: Number(finalPrice) || 0,
+      pricing: {
+        finalAmount: Number(finalPrice) || 0
+      },
 
-      orderType: "whatsapp",
-      paymentMode: "whatsapp",
-      paymentStatus: "pending",
+      // ✅ UNIFIED PAYMENT OBJECT (VERY IMPORTANT)
+      payment: {
+        mode: "whatsapp",
+        status: "pending",
+        paidAmount: 0
+      },
+
       orderStatus: "pending",
+      source: "product-whatsapp",
 
       productLink: window.location.href,
       createdAt: Date.now()
     };
 
     // ================================
-    // 4️⃣ SAVE ORDER TO FIRESTORE
+    // 4️⃣ SAVE ORDER
     // ================================
     await addDoc(collection(db, "orders"), orderData);
 
@@ -327,7 +337,6 @@ window.orderNow = async function () {
     // 5️⃣ BUILD WHATSAPP MESSAGE
     // ================================
     let msg = `🛍 *New Order — Imaginary Gifts*\n\n`;
-
     msg += `🧾 *Order No:* ${orderNumber}\n\n`;
     msg += `📦 *Product:* ${orderData.productName}\n`;
 
@@ -345,8 +354,8 @@ window.orderNow = async function () {
       });
     }
 
-    msg += `\n💰 *Total:* ₹${orderData.price}\n`;
-    msg += `📌 Status: Pending\n\n`;
+    msg += `\n💰 *Total:* ₹${orderData.pricing.finalAmount}\n`;
+    msg += `💳 Payment: WhatsApp (Pending)\n\n`;
     msg += `🔗 Product Link:\n${orderData.productLink}`;
 
     // ================================
